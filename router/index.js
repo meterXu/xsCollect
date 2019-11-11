@@ -30,7 +30,7 @@ router.post('/SaveDataSource', async (ctx, next) => {
     let id = ctx.request.body.value;
     let name = ctx.request.body.text;
     let {type, ipAddress, port, schemas, username, password} = ctx.request.body;
-    if(await testConnect({type, ipAddress, port, schemas, username, password:RSA.decrypt(password)})){
+    if(await testConnect({type, ipAddress, port, schemas, username, password:password})){
         if (id) {
             let res = await db.sqliteProvider.exec('update xs_database set name=?,type=?,ipaddress=?,port=?,userName=?,password=?,`schemas`=? where id = ?',
                 [name, type, ipAddress, port, username, password, schemas, id]);
@@ -173,7 +173,7 @@ router.post('/ExecSql', async (ctx, next) => {
                         try {
                             let queryData = await db.oracleProvider.query({
                                 user:dbRes[0].USERNAME,
-                                password:RSA.decrypt(dbRes[0].PASSWORD),
+                                password:dbRes[0].PASSWORD,
                                 connectString:dbRes[0].IPADDRESS+":"+dbRes[0].PORT+"/"+dbRes[0].SCHEMAS
                             },sqlArray[i]);
                             let dataList=[];
@@ -196,7 +196,7 @@ router.post('/ExecSql', async (ctx, next) => {
                                 host:dbRes[0].IPADDRESS,
                                 port:dbRes[0].PORT,
                                 user:dbRes[0].USERNAME,
-                                password:RSA.decrypt(dbRes[0].PASSWORD),
+                                password:dbRes[0].PASSWORD,
                                 database:dbRes[0].SCHEMAS
                             },sqlArray[i]);
                             resData.push(JSON.stringify(queryData.recordset));
@@ -211,7 +211,7 @@ router.post('/ExecSql', async (ctx, next) => {
                                 host:dbRes[0].IPADDRESS,
                                 port:dbRes[0].PORT,
                                 user:dbRes[0].USERNAME,
-                                password:RSA.decrypt(dbRes[0].PASSWORD),
+                                password:dbRes[0].PASSWORD,
                                 database:dbRes[0].SCHEMAS
                             },sqlArray[i],[])
                             resData.push(JSON.stringify(queryData));
