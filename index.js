@@ -30,7 +30,6 @@ app.use(async (ctx, next) => {
 });
 app.use(router.routes());
 
-debugger
 if(config.enableSsl){
     try{
         https.createServer(sslOptions, app.callback()).listen(port,(err)=>{
