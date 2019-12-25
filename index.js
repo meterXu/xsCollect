@@ -4,7 +4,7 @@ const fs = require('fs');
 const config = require('./config');
 const router = require('./router/index');
 const koaBody = require('koa-body');
-const cors = require('koa-cors');
+const cors = require('koa2-cors');
 const http = require('http');
 const https = require('https');
 
