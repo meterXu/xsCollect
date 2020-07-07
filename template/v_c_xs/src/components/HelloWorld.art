@@ -9,8 +9,8 @@ export default {
   name: 'HelloWorld',
   data () {
     return {
-      charts: {{charts}},
-      options: {{options}}
+      charts: {{@ charts}},
+      options: {{@ options}}
     }
   }
 }

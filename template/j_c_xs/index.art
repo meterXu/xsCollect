@@ -17,8 +17,8 @@
         new Vue({
             el: '#app',
             data: {
-                charts: {{ charts }},
-                options: {{ options }}
+                charts: {{@ charts }},
+                options: {{@ options }}
             }
         })
     </script>
