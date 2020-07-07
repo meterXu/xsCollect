@@ -315,7 +315,7 @@ async function createRealContent(templatePath,oid,type){
         {
             const canvasOptionStr = resTable.result[0]["OPTIONS"];
             const canvasDataStr = resTable.result[0]["DATA"];
-            const realContent = template(path.json(templatePath, type===1?"index.art": "src\\components\\HelloWorld.vue"),{
+            const realContent = template(path.json(templatePath, type===1?"index.art": "src\\components\\HelloWorld.art"),{
                 charts:canvasDataStr,
                 options:canvasOptionStr
             });
