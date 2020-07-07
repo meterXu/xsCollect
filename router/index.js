@@ -1,6 +1,8 @@
 const router = require('koa-router')();
 const db = require('../common/provider');
 const RSA = require("../common/RSA");
+const path = require('path');
+var template = require('art-template');
 router.get('/', async (ctx, next) => {
     ctx.body = 'hello xscollect!'
 });
@@ -227,6 +229,36 @@ router.post('/ExecSql', async (ctx, next) => {
     ctx.body=resData;
 });
 router.post('/DownloadCanvas', async(ctx,next)=>{
+    ctx.response.body = 'json';
+    let data = ctx.request.body
+    if(data.type&&data.canvasOid){
+        let templatePath = "";
+        let downLoadDirName = "";
+        let downLoadRootPath = "";
+        let downLoadTmpPath = "";
+        let destWriteFile = "";
+        const type = data.type;
+        const oid = data.canvasOid;
+        switch (type) {
+            case 1:{
+                templatePath = path.join(__dirname,"template\\j_c_xs");
+                downLoadDirName = "j_c_xs_" + (new Date()).valueOf();
+                downLoadRootPath = path.join(__dirname,"download");
+                downLoadTmpPath = path.join(downLoadRootPath, downLoadDirName);
+                destWriteFile = path.join(downLoadTmpPath, "index.art");
+            }break;
+            case 2:{
+                templatePath = path.join(__dirname,"template\\v_c_xs");
+                downLoadDirName = "v_c_xs_" + (new Date()).valueOf();
+                downLoadRootPath = path.join(__dirname,"download");
+                downLoadTmpPath = path.join(downLoadRootPath, downLoadDirName);
+                destWriteFile = path.join(downLoadTmpPath, "src\\components\\HelloWorld.art");
+            }break;
+        }
+        const realContent = createRealContent(templatePath, oid, type);
+    }else{
+        ctx.body=null
+    }
 });
 
 
@@ -267,6 +299,34 @@ async function testConnect(config){
         }
     }catch (e) {
         return false
+    }
+}
+
+async function createRealContent(templatePath,oid,type){
+    try
+    {
+        const sql = "select * from T_YYJK_REPORT_CANVAS where OID =?";
+        const resTable = await db.sqliteProvider.query(sql,[oid])
+        if (resTable.result.length === 0)
+        {
+            return null;
+        }
+        else
+        {
+            const canvasOptionStr = resTable.result[0]["OPTIONS"];
+            const canvasDataStr = resTable.result[0]["DATA"];
+            const realContent = template(path.json(templatePath, type===1?"index.art": "src\\components\\HelloWorld.vue"),{
+                charts:canvasDataStr,
+                options:canvasOptionStr
+            });
+            return realContent;
+        }
+    }
+    catch (ex)
+    {
+        console.error(ex.message);
+        console.error(ex.track);
+        return null;
     }
 }
 
