@@ -2,7 +2,9 @@ const router = require('koa-router')();
 const db = require('../common/provider');
 const RSA = require("../common/RSA");
 const path = require('path');
-var template = require('art-template');
+const fs = require('fs');
+const template = require('art-template');
+const compressing = require('compressing');
 router.get('/', async (ctx, next) => {
     ctx.body = 'hello xscollect!'
 });
@@ -22,7 +24,7 @@ router.post('/GetDataBaseList', async (ctx, next) => {
             username: c.USERNAME,
             ipAddress: c.IPADDRESS,
             port: c.PORT.toString(),
-            password:''
+            password: ''
         })
     });
     ctx.body = resData
@@ -32,7 +34,7 @@ router.post('/SaveDataSource', async (ctx, next) => {
     let id = ctx.request.body.value;
     let name = ctx.request.body.text;
     let {type, ipAddress, port, schemas, username, password} = ctx.request.body;
-    if(await testConnect({type, ipAddress, port, schemas, username, password:password})){
+    if (await testConnect({type, ipAddress, port, schemas, username, password: password})) {
         if (id) {
             let res = await db.sqliteProvider.exec('update xs_database set name=?,type=?,ipaddress=?,port=?,userName=?,password=?,`schemas`=? where id = ?',
                 [name, type, ipAddress, port, username, password, schemas, id]);
@@ -52,8 +54,8 @@ router.post('/SaveDataSource', async (ctx, next) => {
                 ctx.body = {code: 0, oid: ''};
             }
         }
-    }else{
-        ctx.body = {code: 0, msg : '数据库无法连接'};
+    } else {
+        ctx.body = {code: 0, msg: '数据库无法连接'};
     }
 
 });
@@ -150,74 +152,70 @@ router.post('/DelCanvas', async (ctx, next) => {
 });
 router.post('/ExecSql', async (ctx, next) => {
     ctx.response.body = 'json';
-    let resData=[];
-    let {dbs,sqls}=ctx.request.body;
-    let dbArray=[];
-    let sqlArray=[];
+    let resData = [];
+    let {dbs, sqls} = ctx.request.body;
+    let dbArray = [];
+    let sqlArray = [];
     if (dbs) {
         dbArray = dbs.split('&')
     }
-    if(sqls) {
+    if (sqls) {
         sqlArray = sqls.split('&')
     }
-    for(let i=0;i<dbArray.length;i++){
-        if (!dbArray[i] || !sqlArray[i])
-        {
-            ctx.body=null;
-        }
-        else
-        {
-            var dbRes = await db.sqliteProvider.query('select * from XS_DATABASE where ID=? and `DELETE`=1 and STATE=1',[dbArray[i]]);
-            if (dbRes.length > 0)
-            {
+    for (let i = 0; i < dbArray.length; i++) {
+        if (!dbArray[i] || !sqlArray[i]) {
+            ctx.body = null;
+        } else {
+            var dbRes = await db.sqliteProvider.query('select * from XS_DATABASE where ID=? and `DELETE`=1 and STATE=1', [dbArray[i]]);
+            if (dbRes.length > 0) {
                 switch (dbRes[0].TYPE.toString()) {
-                    case "1":{
+                    case "1": {
                         try {
                             let queryData = await db.oracleProvider.query({
-                                user:dbRes[0].USERNAME,
-                                password:dbRes[0].PASSWORD,
-                                connectString:dbRes[0].IPADDRESS+":"+dbRes[0].PORT+"/"+dbRes[0].SCHEMAS
-                            },sqlArray[i]);
-                            let dataList=[];
-                            queryData.rows.forEach((c,i)=>{
+                                user: dbRes[0].USERNAME,
+                                password: dbRes[0].PASSWORD,
+                                connectString: dbRes[0].IPADDRESS + ":" + dbRes[0].PORT + "/" + dbRes[0].SCHEMAS
+                            }, sqlArray[i]);
+                            let dataList = [];
+                            queryData.rows.forEach((c, i) => {
                                 let dataObj = {};
-                                queryData.metaData.forEach((k,j)=>{
-                                    dataObj[k.name]=c[j];
+                                queryData.metaData.forEach((k, j) => {
+                                    dataObj[k.name] = c[j];
                                 })
                                 dataList.push(dataObj);
                             });
                             resData.push(JSON.stringify(dataList));
-                        }catch (e) {
+                        } catch (e) {
                             resData.push("[]");
                         }
                         break;
                     }
-                    case "2":{
-                        try{
+                    case "2": {
+                        try {
                             let queryData = await db.mssqlProvider.query({
-                                host:dbRes[0].IPADDRESS,
-                                port:dbRes[0].PORT,
-                                user:dbRes[0].USERNAME,
-                                password:dbRes[0].PASSWORD,
-                                database:dbRes[0].SCHEMAS
-                            },sqlArray[i]);
+                                host: dbRes[0].IPADDRESS,
+                                port: dbRes[0].PORT,
+                                user: dbRes[0].USERNAME,
+                                password: dbRes[0].PASSWORD,
+                                database: dbRes[0].SCHEMAS
+                            }, sqlArray[i]);
                             resData.push(JSON.stringify(queryData.recordset));
-                        }catch (e) {
+                        } catch (e) {
                             resData.push("[]");
                         }
                         break;
                     }
-                    case "3":{
-                        try{
+                    case "3": {
+                        try {
                             let queryData = await db.mysqlProvider.query({
-                                host:dbRes[0].IPADDRESS,
-                                port:dbRes[0].PORT,
-                                user:dbRes[0].USERNAME,
-                                password:dbRes[0].PASSWORD,
-                                database:dbRes[0].SCHEMAS
-                            },sqlArray[i],[])
+                                host: dbRes[0].IPADDRESS,
+                                port: dbRes[0].PORT,
+                                user: dbRes[0].USERNAME,
+                                password: dbRes[0].PASSWORD,
+                                database: dbRes[0].SCHEMAS
+                            }, sqlArray[i], [])
                             resData.push(JSON.stringify(queryData));
-                        }catch (e) {
+                        } catch (e) {
                             resData.push("[]");
                         }
                         break;
@@ -226,108 +224,150 @@ router.post('/ExecSql', async (ctx, next) => {
             }
         }
     }
-    ctx.body=resData;
+    ctx.body = resData;
 });
-router.post('/DownloadCanvas', async(ctx,next)=>{
+router.post('/DownloadCanvas', async (ctx, next) => {
     ctx.response.body = 'json';
     let data = ctx.request.body
-    if(data.type&&data.canvasOid){
+    if (data.type && data.canvasOid) {
         let templatePath = "";
         let downLoadDirName = "";
         let downLoadRootPath = "";
         let downLoadTmpPath = "";
         let destWriteFile = "";
-        const type = data.type;
+        const type = data.type.toString();
         const oid = data.canvasOid;
         switch (type) {
-            case 1:{
-                templatePath = path.join(__dirname,"template\\j_c_xs");
+            case "1": {
+                templatePath = path.resolve("template\\j_c_xs");
                 downLoadDirName = "j_c_xs_" + (new Date()).valueOf();
-                downLoadRootPath = path.join(__dirname,"download");
+                downLoadRootPath = path.resolve( "download");
                 downLoadTmpPath = path.join(downLoadRootPath, downLoadDirName);
                 destWriteFile = path.join(downLoadTmpPath, "index.art");
-            }break;
-            case 2:{
-                templatePath = path.join(__dirname,"template\\v_c_xs");
+            }
+                break;
+            case "2": {
+                templatePath = path.resolve( "template\\v_c_xs");
                 downLoadDirName = "v_c_xs_" + (new Date()).valueOf();
-                downLoadRootPath = path.join(__dirname,"download");
+                downLoadRootPath = path.resolve("download");
                 downLoadTmpPath = path.join(downLoadRootPath, downLoadDirName);
                 destWriteFile = path.join(downLoadTmpPath, "src\\components\\HelloWorld.art");
-            }break;
+            }
+                break;
         }
-        const realContent = createRealContent(templatePath, oid, type);
-    }else{
-        ctx.body=null
+        const realContent = await createRealContent(templatePath, oid, type);
+        copyDir(templatePath, downLoadTmpPath, (err) => {
+            if (err) {
+                ctx.body = null
+            }
+        });
+        if (!realContent) {
+            ctx.body = null;
+        } else {
+            fs.writeFileSync(destWriteFile,realContent)
+            fs.renameSync(destWriteFile,destWriteFile.replace('art',type==="2"?'vue':'html'))
+            await createZip(downLoadTmpPath, downLoadDirName);
+            ctx.body=path.join(downLoadRootPath,`${downLoadDirName}.zip`)
+        }
+    } else {
+        ctx.body = null
     }
 });
 
 
-async function testConnect(config){
-    try{
+async function testConnect(config) {
+    try {
         switch (config.type.toString()) {
-            case "1":{
+            case "1": {
                 let queryData = await db.oracleProvider.query({
-                    user:config.username,
-                    password:config.password,
-                    connectString:config.ipAddress+":"+config.port+"/"+config.schemas
-                },'select 1 VALUE from dual');
-                return queryData.rows.length>0;
+                    user: config.username,
+                    password: config.password,
+                    connectString: config.ipAddress + ":" + config.port + "/" + config.schemas
+                }, 'select 1 VALUE from dual');
+                return queryData.rows.length > 0;
                 break;
             }
-            case "2":{
+            case "2": {
                 let queryData = await db.mssqlProvider.query({
-                    host:config.ipAddress,
-                    port:config.port,
-                    user:config.username,
-                    password:config.password,
-                    database:config.schemas
-                },'select 1 as VALUE');
-                return queryData.recordset.length>0;
+                    host: config.ipAddress,
+                    port: config.port,
+                    user: config.username,
+                    password: config.password,
+                    database: config.schemas
+                }, 'select 1 as VALUE');
+                return queryData.recordset.length > 0;
                 break;
             }
-            case "3":{
+            case "3": {
                 let queryData = await db.mysqlProvider.query({
-                    host:config.ipAddress,
-                    port:config.port,
-                    user:config.username,
-                    password:config.password,
-                    database:config.schemas
-                },'select 1 VALUE from dual',[]);
-                return queryData.length>0;
+                    host: config.ipAddress,
+                    port: config.port,
+                    user: config.username,
+                    password: config.password,
+                    database: config.schemas
+                }, 'select 1 VALUE from dual', []);
+                return queryData.length > 0;
                 break;
             }
         }
-    }catch (e) {
+    } catch (e) {
         return false
     }
 }
 
-async function createRealContent(templatePath,oid,type){
-    try
-    {
-        const sql = "select * from T_YYJK_REPORT_CANVAS where OID =?";
-        const resTable = await db.sqliteProvider.query(sql,[oid])
-        if (resTable.result.length === 0)
-        {
+async function createRealContent(templatePath, oid, type) {
+    try {
+        const sql = "select * from XS_CANVAS where OID =?";
+        const resTable = await db.sqliteProvider.query(sql, [oid])
+        if (resTable.length === 0) {
             return null;
-        }
-        else
-        {
-            const canvasOptionStr = resTable.result[0]["OPTIONS"];
-            const canvasDataStr = resTable.result[0]["DATA"];
-            const realContent = template(path.json(templatePath, type===1?"index.art": "src\\components\\HelloWorld.art"),{
-                charts:canvasDataStr,
-                options:canvasOptionStr
+        } else {
+            const canvasOptionStr = resTable[0]["OPTIONS"];
+            const canvasDataStr = resTable[0]["DATA"];
+            const realContent = template(path.join(templatePath, type === "1" ? "index.art" : "src\\components\\HelloWorld.art"), {
+                charts: canvasDataStr,
+                options: canvasOptionStr
             });
             return realContent;
         }
-    }
-    catch (ex)
-    {
+    } catch (ex) {
         console.error(ex.message);
         console.error(ex.track);
         return null;
     }
+}
+
+function copyDir(src, dist, callback) {
+    try{
+        if(!fs.existsSync(dist)){
+            fs.mkdirSync(dist);
+        }
+        _copy(null, src, dist);
+        function _copy(err, src, dist) {
+            const paths = fs.readdirSync(src)
+            paths.forEach(function (path) {
+                const _src = src + '/' + path;
+                const _dist = dist + '/' + path;
+                // 判断是文件还是目录
+                if (fs.statSync(_src).isFile()) {
+                    fs.writeFileSync(_dist, fs.readFileSync(_src));
+                } else if (fs.statSync(_src).isDirectory()) {
+                    // 当是目录是，递归复制
+                    copyDir(_src, _dist, callback)
+                }
+            })
+        }
+    }catch (err) {
+        console.error(err.message)
+        if(callback){
+            callback()
+        }
+    }
+
+}
+
+async function createZip(dirPath,dirName){
+   return compressing.zip.compressDir(dirPath, `download\\${dirName}.zip`)
 }
 
 
