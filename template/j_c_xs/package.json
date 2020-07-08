@@ -4,7 +4,7 @@
   "description": "",
   "main": "index.js",
   "dependencies": {
-    "vue-draw-xs": "@latest"
+    "vue-draw-xs": "^1.1.9"
   },
   "devDependencies": {},
   "scripts": {
