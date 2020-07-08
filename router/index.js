@@ -5,6 +5,7 @@ const path = require('path');
 const fs = require('fs');
 const template = require('art-template');
 const compressing = require('compressing');
+const send = require('koa-send');
 router.get('/', async (ctx, next) => {
     ctx.body = 'hello xscollect!'
 });
@@ -226,9 +227,9 @@ router.post('/ExecSql', async (ctx, next) => {
     }
     ctx.body = resData;
 });
-router.post('/DownloadCanvas', async (ctx, next) => {
-    ctx.response.body = 'json';
-    let data = ctx.request.body
+router.get('/DownloadCanvas', async (ctx, next) => {
+    ctx.response.type = 'text';
+    let data = ctx.request.query
     if (data.type && data.canvasOid) {
         let templatePath = "";
         let downLoadDirName = "";
@@ -267,7 +268,9 @@ router.post('/DownloadCanvas', async (ctx, next) => {
             fs.writeFileSync(destWriteFile,realContent)
             fs.renameSync(destWriteFile,destWriteFile.replace('art',type==="2"?'vue':'html'))
             await createZip(downLoadTmpPath, downLoadDirName);
-            ctx.body=path.join(downLoadRootPath,`${downLoadDirName}.zip`)
+            const zipPath = `download\\${downLoadDirName}.zip`
+            ctx.attachment(zipPath)
+            await send(ctx,zipPath)
         }
     } else {
         ctx.body = null
