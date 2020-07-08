@@ -257,23 +257,24 @@ router.get('/DownloadCanvas', async (ctx, next) => {
                 break;
         }
         const realContent = await createRealContent(templatePath, oid, type);
-        copyDir(templatePath, downLoadTmpPath, (err) => {
-            if (err) {
-                ctx.body = null
-            }
-        });
         if (!realContent) {
-            ctx.body = null;
+            ctx.body = 0
         } else {
+            copyDir(templatePath, downLoadTmpPath, (err) => {
+                if (err) {
+                    ctx.body= 0
+                }
+            });
             fs.writeFileSync(destWriteFile,realContent)
             fs.renameSync(destWriteFile,destWriteFile.replace('art',type==="2"?'vue':'html'))
             await createZip(downLoadTmpPath, downLoadDirName);
             const zipPath = `download\\${downLoadDirName}.zip`
             ctx.attachment(zipPath)
+            ctx.body= 0
             await send(ctx,zipPath)
         }
     } else {
-        ctx.body = null
+        ctx.body= 0
     }
 });
 
