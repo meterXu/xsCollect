@@ -270,8 +270,10 @@ router.get('/DownloadCanvas', async (ctx, next) => {
             await createZip(downLoadTmpPath, downLoadDirName);
             const zipPath = `download\\${downLoadDirName}.zip`
             ctx.attachment(zipPath)
-            ctx.body= 0
+            ctx.body= 1
             await send(ctx,zipPath)
+            deleteDir(downLoadTmpPath)
+            fs.unlinkSync(zipPath)
         }
     } else {
         ctx.body= 0
@@ -371,7 +373,23 @@ function copyDir(src, dist, callback) {
 }
 
 async function createZip(dirPath,dirName){
-   return compressing.zip.compressDir(dirPath, `download\\${dirName}.zip`)
+    return compressing.zip.compressDir(dirPath, `download\\${dirName}.zip`)
+}
+
+function deleteDir(path) {
+    let files = [];
+    if(fs.existsSync(path)) {
+        files = fs.readdirSync(path);
+        files.forEach(function(file, index) {
+            const curPath = path + "/" + file;
+            if(fs.statSync(curPath).isDirectory()) {
+                deleteDir(curPath);
+            } else {
+                fs.unlinkSync(curPath);
+            }
+        });
+        fs.rmdirSync(path);
+    }
 }
 
 
